@@ -7,7 +7,7 @@
 #include<cstring>
 #include "linenoise.h"
 #include "debugger.hpp"
-
+#include<sys/personality.h>
 using namespace minidbg;
 
 
@@ -40,6 +40,9 @@ void debugger::handle_command(const std::string& line){
 
 	if(is_prefix(command,"continue")){
 		continue_execution();
+	}else if(is_prefix(command,"break")){
+		std::string addr {args[1],2};
+		set_breakpoint_at_address(std::stol(addr,0,16));
 	}else{
 		std::cerr<<"Unknown Command\n";
 	}
@@ -61,6 +64,21 @@ void debugger::run(){
 
 	}	
 }
+
+void debugger::set_breakpoint_at_address(std::intptr_t addr){
+	std::cout<<"Set breakpoint  at address 0x"<< std::hex << addr << std::endl;
+	breakpoint bp{m_pid,addr};
+	bp.enable();
+	m_breakpoints[addr]=bp;
+}
+
+void execute_debugee(const std::string& prog_name){
+	if(ptrace(PTRACE_TRACEME,0,0,0)<0){
+		std::cerr<<"Error in ptrace\n";
+		return;
+	}
+	execl(prog_name.c_str(),prog_name.c_str(),nullptr);
+}
 int main(int argc,char * argv[]){
 		if(argc<2){
 			std::cerr<<"Program not specified";
@@ -73,6 +91,8 @@ int main(int argc,char * argv[]){
 		if(pid==0){
 			// we are in the child process
 			// execute debugee
+			personality(ADDR_NO_RANDOMIZE);
+			execute_debugee(prog);
 		}else if(pid>=1){
 			// we are in the parent process
 			// execute debugger
