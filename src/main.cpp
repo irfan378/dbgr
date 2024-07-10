@@ -4,9 +4,11 @@
 #include<unistd.h>
 #include<sstream>
 #include<iostream>
+#include <iomanip>
 #include<cstring>
 #include "linenoise.h"
 #include "debugger.hpp"
+#include "registers.hpp"
 #include<sys/personality.h>
 using namespace minidbg;
 
@@ -34,6 +36,14 @@ void debugger::continue_execution(){
 	auto options=0;
 	waitpid(m_pid,&wait_status,options);
 }
+
+void debugger::dump_registers(){
+	for (const auto& rd : g_register_descriptors){
+		std::cout << rd.name << "= 0x" << std::setfill('0') << std::setw(10) << std::hex << get_register_value(m_pid,rd.r) << std::endl;
+	}
+}
+
+
 void debugger::handle_command(const std::string& line){
 	auto args=split(line,' ');
 	auto command=args[0];
@@ -43,6 +53,16 @@ void debugger::handle_command(const std::string& line){
 	}else if(is_prefix(command,"break")){
 		std::string addr {args[1],2};
 		set_breakpoint_at_address(std::stol(addr,0,16));
+	}else if(is_prefix(command,"register")){
+		if(is_prefix(args[1],"dump")){
+			dump_registers();
+		}
+		else if (is_prefix(args[1], "read")) {
+            		std::cout << get_register_value(m_pid, get_register_from_name(args[2])) << std::endl;
+        	}else if(is_prefix(args[1],"write")){
+			std::string val {args[3],2};
+			set_register_value(m_pid,get_register_from_name(args[2]),std::stol(val,0,16));
+		}
 	}else{
 		std::cerr<<"Unknown Command\n";
 	}

@@ -1,11 +1,11 @@
-#ifndef MINDBG_REGISTERS_CPP
-#define MINIDBG_REGISTERS_CPP
+#ifndef MINIDBG_REGISTERS_HPP
+#define MINIDBG_REGISTERS_HPP
 
-#include<sys/user.h>
-#include<algorithm>
+#include <sys/user.h>
+#include <algorithm>
 
-namespace minidbg{
- enum class reg {
+namespace minidbg {
+    enum class reg {
         rax, rbx, rcx, rdx,
         rdi, rsi, rbp, rsp,
         r8,  r9,  r10, r11,
@@ -16,8 +16,7 @@ namespace minidbg{
         fs, gs, ss, ds, es
     };
 
-
-  static constexpr std::size_t n_registers = 27;
+    static constexpr std::size_t n_registers = 27;
 
     struct reg_descriptor {
         reg r;
@@ -53,39 +52,47 @@ namespace minidbg{
             { reg::es, 50, "es" },
             { reg::fs, 54, "fs" },
             { reg::gs, 55, "gs" },
-
     }};
 
+    uint64_t get_register_value(pid_t pid, reg r) {
+        user_regs_struct regs;
+        ptrace(PTRACE_GETREGS, pid, nullptr, &regs);
+        auto it = std::find_if(begin(g_register_descriptors), end(g_register_descriptors),
+                               [r](auto&& rd) { return rd.r == r; });
 
-    uint64_t get_registers_value(pid_t pid,reg r){
-	user_regs_struct regs;
-	ptrace(PTRACE_GETREGS,pid,nullptr,&regs);
-
-	auto it=std::find_if(begin(g_register_descriptors),end(g_register_descriptors),
-			[r]{auto&& rd} { return rd.r == r; });
-    
-	return *(reinterpret_cast<uint64_t*>(&regs)+(it-begin(g_register_descriptors)));
+        return *(reinterpret_cast<uint64_t*>(&regs) + (it - begin(g_register_descriptors)));
     }
 
-    void set_register_value(pid_t pid,reg r,uint64_t value){
-	user_regs_struct regs;
-	ptrace(PTRACE_GETREGS,pid,nullptr,&regs);
+    void set_register_value(pid_t pid, reg r, uint64_t value) {
+        user_regs_struct regs;
+        ptrace(PTRACE_GETREGS, pid, nullptr, &regs);
+        auto it = std::find_if(begin(g_register_descriptors), end(g_register_descriptors),
+                               [r](auto&& rd) { return rd.r == r; });
 
-	auto it=std::find_if(begin(g_register_descriptrs),end(g_register_descriptors),
-			[r]{auto&& rd} { return rd.r == r; });
-	return *(reinterpret_cast<uint64_t*>(&regs)+(it-begin(g_register_descriptors)))=value;
-	ptrace(PTRACE_SETREGS,pid,nullptr,&regs);
+        *(reinterpret_cast<uint64_t*>(&regs) + (it - begin(g_register_descriptors))) = value;
+        ptrace(PTRACE_SETREGS, pid, nullptr, &regs);
     }
 
-    uint64_t get_register_value_from_dwarf_register(pid_t pid,unsigned regnum){
-	auto it=std::find_if(begin(g_register_descriptors),end(g_register_descriptors),
-			[regnum](auto&& rd) { return rd.dwarf_r == regnum; });
-	if(it==end(g_register_descriptors)){
-	 	throw std::out_of_range{"Unknown dwarf register"};
+    uint64_t get_register_value_from_dwarf_register (pid_t pid, unsigned regnum) {
+        auto it = std::find_if(begin(g_register_descriptors), end(g_register_descriptors),
+                               [regnum](auto&& rd) { return rd.dwarf_r == regnum; });
+        if (it == end(g_register_descriptors)) {
+            throw std::out_of_range{"Unknown dwarf register"};
+        }
 
-	}
+        return get_register_value(pid, it->r);
+    }
 
-	return get_register_value(pid,it->r);
+    std::string get_register_name(reg r) {
+        auto it = std::find_if(begin(g_register_descriptors), end(g_register_descriptors),
+                               [r](auto&& rd) { return rd.r == r; });
+        return it->name;
+    }
+
+    reg get_register_from_name(const std::string& name) {
+        auto it = std::find_if(begin(g_register_descriptors), end(g_register_descriptors),
+                               [name](auto&& rd) { return rd.name == name; });
+        return it->r;
     }
 }
 
