@@ -87,31 +87,60 @@ void debugger::handle_command(const std::string& line){
 	auto command=args[0];
 
 	if(is_prefix(command,"continue")){
+		
 		continue_execution();
+
 	}else if(is_prefix(command,"break")){
+		
 		std::string addr {args[1],2};
 		set_breakpoint_at_address(std::stol(addr,0,16));
+
 	}else if(is_prefix(command,"register")){
+		
 		if(is_prefix(args[1],"dump")){
+		
 			dump_registers();
-		}
-		else if (is_prefix(args[1], "read")) {
-            		std::cout << get_register_value(m_pid, get_register_from_name(args[2])) << std::endl;
-        	}else if(is_prefix(args[1],"write")){
+
+		}else if (is_prefix(args[1], "read")) {
+            		
+			std::cout << get_register_value(m_pid, get_register_from_name(args[2])) << std::endl;
+        	
+		}else if(is_prefix(args[1],"write")){
+		
 			std::string val {args[3],2};
 			set_register_value(m_pid,get_register_from_name(args[2]),std::stol(val,0,16));
+		
 		}
 	}else if(is_prefix(command,"memory")){
-		std::string addr{args[2],2};
+		  
+		  std::string addr{args[2],2};
 		  if (is_prefix(args[1], "read")) {
-            		std::cout << std::hex << read_memory(std::stol(addr, 0, 16)) << std::endl;
-        	  }
+			  
+			if (args.size() < 4) {
+
+            	            std::cout << std::hex << read_memory(std::stol(addr, 0, 16)) << std::endl;
+        		    return;
+			}
+        
+        		int numWords = std::stoi(args[3]);
+        		if (numWords <= 0) {
+
+            			std::cerr << "Error: Number of words must be positive." << std::endl;
+           			 return; 
+        		}			
+        
+        		for (int i = 0; i < numWords; ++i) {
+				typedef unsigned int word_type;
+            			std::cout << std::hex << read_memory(std::stol(addr, 0, 16) + i * sizeof(word_type)) << std::endl;
+        		}				  
+	  
+        	}
+		
 		  if(is_prefix(args[1],"write")){
 			std::string val{args[3],2};
 			write_memory(std::stol(addr,0,16),std::stol(val,0,16));
 		  }
-	}
-	else{
+	}else{
 		std::cerr<<"Unknown Command\n";
 	}
 
