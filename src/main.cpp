@@ -113,12 +113,12 @@ void debugger::handle_command(const std::string& line){
 		}
 	}else if(is_prefix(command,"memory")){
 		  
-		  std::string addr{args[2],2};
+		  std::string addr=args[2];
 		  if (is_prefix(args[1], "read")) {
 			  
 			if (args.size() < 4) {
 
-            	            std::cout << std::hex << read_memory(std::stol(addr, 0, 16)) << std::endl;
+            	            std::cout<< std::hex<< addr << " " << std::hex << read_memory(std::stol(addr, 0, 16)) << std::endl;
         		    return;
 			}
         
@@ -128,10 +128,11 @@ void debugger::handle_command(const std::string& line){
             			std::cerr << "Error: Number of words must be positive." << std::endl;
            			 return; 
         		}			
-        
-        		for (int i = 0; i < numWords; ++i) {
-				typedef unsigned int word_type;
-            			std::cout << std::hex << read_memory(std::stol(addr, 0, 16) + i * sizeof(word_type)) << std::endl;
+        			typedef unsigned int word_type;
+                                long address = std::stol(addr, 0, 16);
+ 
+			for (int i = 0; i < numWords; ++i) {
+    				std::cout << std::hex << address + i * sizeof(word_type) << " " << read_memory(address + i * sizeof(word_type)) << std::endl;
         		}				  
 	  
         	}
@@ -140,10 +141,35 @@ void debugger::handle_command(const std::string& line){
 			std::string val{args[3],2};
 			write_memory(std::stol(addr,0,16),std::stol(val,0,16));
 		  }
-	}else{
+	}else if(is_prefix(command,"memory_map")){
+			print_memory_mappings();
+
+			}else{
 		std::cerr<<"Unknown Command\n";
 	}
 
+}
+
+void debugger::print_memory_mappings(){
+ // Prepare the command to execute
+    char command[100];
+    snprintf(command, sizeof(command), "/bin/cat /proc/%d/maps",m_pid);
+
+    // Open a pipe to the command
+    FILE *fp = popen(command, "r");
+    if (fp == nullptr) {
+        std::cerr << "Failed to execute command: " << strerror(errno) << std::endl;
+        return;
+    }
+
+    // Read and print the output
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), fp) != nullptr) {
+        std::cout << buffer;
+    }
+
+    // Close the pipe
+    pclose(fp);
 }
 void debugger::run(){
 	int wait_status;
@@ -193,8 +219,8 @@ int main(int argc,char * argv[]){
 		}else if(pid>=1){
 			// we are in the parent process
 			// execute debugger
-			  std::cout << "Started debugging process " << pid << '\n';
-    				debugger dbg{prog, pid};
-			    	dbg.run();		
+			  std::cout << "Started debugging process " << pid << '\n';	
+			  debugger dbg{prog, pid};
+			  dbg.run();		
 		}
 	}

@@ -29,6 +29,8 @@ namespace minidbg {
         auto read_memory(uint64_t address) -> uint64_t ;
         void write_memory(uint64_t address, uint64_t value);
 
+	void print_memory_mappings();
+
         std::string m_prog_name;
         pid_t m_pid;
         std::unordered_map<std::intptr_t,breakpoint> m_breakpoints;
